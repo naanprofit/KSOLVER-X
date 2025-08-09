@@ -9,6 +9,7 @@
 import sys, time, xxhash, pybloomfilter, os
 import secp256k1 as btc
 import random
+from base128 import decode_base128_stream, encode_base128
 from multiprocessing import Event, Process, Queue, Value, cpu_count
 from math import log2
 
@@ -82,11 +83,19 @@ def display_time(seconds):
     minutes, seconds = divmod(rem, 60)
     return f"{int(hours):02d}:{int(minutes):02d}:{seconds:05.2f}"
 
-def find(word, file):
-    with open(file, "r") as f:
-        for line in f:
-            if word in line:
-                return int(line.split(";")[0], 16)
+def find(word_hex, file):
+    """Search for hash in base128-encoded binary file and return decoded value."""
+    target = bytes.fromhex(word_hex)
+    with open(file, "rb") as f:
+        while True:
+            value, consumed = decode_base128_stream(f)
+            if value is None:
+                break
+            h = f.read(8)
+            if len(h) < 8:
+                break
+            if h == target:
+                return value
     return None
 
 def chunks(s):
@@ -140,8 +149,8 @@ def process_collision(item, i, counter, fc, match, queue, r, basefile, sign, ste
     p1 = find(xxhash.xxh64(item).hexdigest(), basefile)
     if p1:
         offset = p1 - i + step if sign == "addition" else p1 + i + step
-        with open('FOUND.txt', 'a') as found:
-            found.write(f'{a.hex()};{offset:x}\n')
+        with open('FOUND.txt', 'ab') as found:
+            found.write(a.hex().encode() + b';' + encode_base128(offset) + b'\n')
         printc(color.BOLD, f"\n[+] Core#{r} solved key by {sign} with step {step:x}")
         match.set()
         queue.put_nowait(offset)
