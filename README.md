@@ -7,8 +7,9 @@ KSOLVER X is a tool for solving private keys in the Bitcoin ecosystem. It is des
 
 - There is practically no need for RAM to work
 - Only for linux, because the bloom filter uses mmap
-- Utilizes the secp256k1 elliptic curve python library by iceland2k14 for efficient and fast ec operations
+- Utilizes the secp256k1 elliptic curve python library by iceland2k14 for efficient and fast EC operations with batching
 - Leverages the Bloom filter data structure by prashnts to quickly check for potential key matches
+- Streams bloom and base data directly to disk using base128 encoding
 - Supports parallel processing using multiple CPU cores for faster computation
 - Provides detailed progress information, including estimated probability of finding the key
 
@@ -35,7 +36,7 @@ python3 ksolverx.py <public_key> <bloom_filter_file> <base_file> <range> <num_gr
 - `<bloom_size>`: The number of random xpoints to be added to the bloom filter.
 - `<public_key>`: The public key you want to find the corresponding private key for.
 - `<bloom_filter_file>`: The file containing the Bloom filter data.
-- `<base_file>`: The file containing the base private key information.
+- `<base_file>`: The file containing the base private key information encoded with base128 varints.
 - `<range>`: The bit range to search for the private key.
 - `<num group keys>`: Number of continuous keys in 1 group operation.
 - `<cores>`: The number of CPU cores to use for parallel processing.
@@ -48,7 +49,7 @@ python3 ksolverx.py 04ab53fd1c7651beb0ddd9a10c071ed29ff0f59bab61c72be03741c5ed3c
 ```
 
 
-This create bloom filter with 100000000 xpoints and will search for the private key corresponding to the given public key, using a Bloom filter stored in the `60` file, a base private key file `60.txt`, a key range of 59-60 bits, 1000000 continuous key and 10 CPU cores.
+This creates a bloom filter with 100000000 xpoints and writes the base key data directly to disk in base128 format. It will search for the private key corresponding to the given public key, using a Bloom filter stored in the `60` file, a base private key file `60.txt`, a key range of 59-60 bits, 1000000 continuous key and 10 CPU cores.
 
 ## Run
 ```

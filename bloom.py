@@ -11,6 +11,7 @@ import secp256k1 as btc
 from pybloomfilter import BloomFilter
 from sys import argv
 from multiprocessing import Process, cpu_count, Value, Event
+from base128 import encode_base128
 
 #=========================================================================
 class color:
@@ -47,13 +48,11 @@ def pr():
     print(f'[+] Cores: {core}')
     print("-"*87)
     
-def generate_random_bloom(start, end):
-    rnd = {}
-    for _ in range(10000):
-        x = random.randint(2 ** start - (2 ** start - 5), 2 ** end - 1)
-        P = btc.scalar_multiplication(x)
-        rnd[P] = f'{x:x}'
-    return rnd
+def generate_random_batch(start, end, size=10000):
+    """Generate a batch of random private keys and their public points."""
+    keys = [random.randint(2 ** start - (2 ** start - 5), 2 ** end - 1) for _ in range(size)]
+    points = btc.scalar_multiplications(keys)
+    return keys, points
 
 def scan_str(num):
     suffixes = ["", "K", "M", "B", "T"]
@@ -91,19 +90,21 @@ def bloom_start(cores='all'):
         exit('\nSIGINT or CTRL-C detected. Exiting gracefully. BYE')
     sys.stdout.write('\n\n[+] Bloom creating complete in {0:.2f} sec\n'.format(time.time() - st))
 
-def save_data(data, filename):
-    with open(filename, "a") as f:
-        for item, value in data.items():
-            f.write(f'{value};{xxhash.xxh64(item).hexdigest()}\n')
+def save_data(keys, points, filename):
+    with open(filename, "ab", buffering=0) as f:
+        for i, key in enumerate(keys):
+            item = points[i*65:(i+1)*65]
+            f.write(encode_base128(key) + xxhash.xxh64(item).digest())
             bf.add(item)
+    bf.flush()
             
 def bloom_create(counter, r, match):
     st = time.time()
     while not match.is_set():
         if match.is_set(): return
-        temp = generate_random_bloom(start, end)
-        save_data(temp, filebase)
-        with counter.get_lock(): counter.value += 10000
+        keys, points = generate_random_batch(start, end)
+        save_data(keys, points, filebase)
+        with counter.get_lock(): counter.value += len(keys)
         if counter.value % 1000000 == 0:
             speedup(st, counter.value)
         if counter.value == count - (core-1)*10000:
