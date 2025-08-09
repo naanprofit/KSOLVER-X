@@ -86,9 +86,19 @@ def bloom_start(cores='all'):
             p.start()
         for worker in workers:
             worker.join()
-    except(KeyboardInterrupt, SystemExit):
-        exit('\nSIGINT or CTRL-C detected. Exiting gracefully. BYE')
-    sys.stdout.write('\n\n[+] Bloom creating complete in {0:.2f} sec\n'.format(time.time() - st))
+        sys.stdout.write('\n\n[+] Bloom creating complete in {0:.2f} sec\n'.format(time.time() - st))
+    except (KeyboardInterrupt, SystemExit):
+        print('\nSIGINT or CTRL-C detected. Exiting gracefully. BYE')
+    finally:
+        # Ensure Bloom filter data is written to disk and resources are released
+        try:
+            bf.sync()
+        except AttributeError:
+            pass
+        try:
+            bf.close()
+        except AttributeError:
+            pass
 
 def save_data(keys, points, filename):
     with open(filename, "ab", buffering=0) as f:
@@ -96,7 +106,8 @@ def save_data(keys, points, filename):
             item = points[i*65:(i+1)*65]
             f.write(encode_base128(key) + xxhash.xxh64(item).digest())
             bf.add(item)
-    bf.flush()
+    # Sync Bloom filter to disk after each batch
+    bf.sync()
             
 def bloom_create(counter, r, match):
     st = time.time()
