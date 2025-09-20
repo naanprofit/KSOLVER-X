@@ -33,23 +33,29 @@ The worker applies very cheap bit-plane masks and GLV/negation-derived tags befo
    python3 -m pip install -r requirements.txt
    ```
 
-2. **Create a Bloom filter** (using sample targets)
+2. *(Optional but recommended)* **Install KSOLVER-X in editable mode** so the
+   CLI entry points are available anywhere on your system:
+   ```bash
+   python3 -m pip install -e .
+   ```
+
+3. **Create a Bloom filter** (using sample targets)
    ```bash
    python3 -m cli.trap_tools build-bloom --csv tests/data/sample_targets.json --out bloom.dat --m-bits 20 --k-hashes 4
    ```
 
-3. **Generate demo traps**
+4. **Generate demo traps**
    ```bash
    python3 -m cli.trap_tools generate --out-dir traps_out --total-traps 1024 --bucket-log2 10 --base 0x1 --stride 2
    python3 -m cli.trap_tools index --traps-dir traps_out --shard-bits 8
    ```
 
-4. **Schedule lanes**
+5. **Schedule lanes**
    ```bash
    python3 -m cli.crt_tools schedule --L 0 --U 0x100000 --bits-per-mod 8 --mods 3 --workers 1 --lanes-per-worker 4 --out lanes.csv
    ```
 
-5. **Run a worker** (toy configuration that locates the known Genesis target)
+6. **Run a worker** (toy configuration that locates the known Genesis target)
    ```bash
    python3 -m cli.run_worker \
        --backend coincurve \
@@ -62,6 +68,74 @@ The worker applies very cheap bit-plane masks and GLV/negation-derived tags befo
    ```
 
 The worker prints progress metrics and writes candidate hits to `SAVES.TXT`. The demo operates on a 40-bit toy range in `scripts/demo_small_range.sh`.
+
+## Usage
+
+### End-to-end demo
+
+A complete toy pipeline is available via:
+
+```bash
+make run-demo
+```
+
+This script wires together trap generation, index creation, Bloom filter
+building and a single worker pass. It automatically exports the repository's
+`src` directory on `PYTHONPATH`, so you can run it directly from the source tree
+without first installing the package.
+
+Artifacts are written to the repository root:
+
+* `demo_traps/` – generated trap shards.
+* `demo_lanes.csv` – CRT lane schedule for worker `0`.
+* `demo_bloom.dat` – memory-mapped Bloom filter populated from
+  `tests/data/sample_targets.json`.
+* `demo_saves.txt` – candidate scalars that passed the verification stage.
+* `demo_metrics.jsonl` – periodic worker metrics in JSON lines format.
+
+### Manual invocation
+
+The CLI modules can be called individually once dependencies are installed:
+
+```bash
+python3 -m cli.trap_tools generate --help
+python3 -m cli.trap_tools index --help
+python3 -m cli.trap_tools build-bloom --help
+python3 -m cli.crt_tools schedule --help
+python3 -m cli.run_worker --help
+python3 -m cli.run_controller --help
+```
+
+Each command prints its supported arguments. To run the pipeline manually from
+the source tree without installing the package, prepend `PYTHONPATH=src` to the
+invocation, for example:
+
+```bash
+PYTHONPATH=src python3 -m cli.run_worker --help
+```
+
+## Low-value target example
+
+The repository ships with a low-difficulty test target representing the Bitcoin
+Genesis address RIPEMD-160 hash: `751e76e8199196d454941c45d1b3a323f1433bd6`. It
+is stored in `tests/data/sample_targets.json` and used by the demo pipeline.
+
+To probe the value explicitly with a worker, point the Bloom filter and target
+flags at the JSON file:
+
+```bash
+PYTHONPATH=src python3 -m cli.run_worker \
+    --backend coincurve --seed 1337 --r 8 --base 1 \
+    --lanes-csv demo_lanes.csv --worker-id 0 \
+    --traps-dir demo_traps --bucket-hint-bits 8 \
+    --bloom demo_bloom.dat --m-bits 20 --k-hashes 4 --mapped-size $((1<<20)) \
+    --target-rmd 751e76e8199196d454941c45d1b3a323f1433bd6 \
+    --steps-per-batch 1000 --verbose
+```
+
+The worker reports any matches it observes and appends successful scalars to
+`demo_saves.txt`, allowing you to sanity-check end-to-end behaviour against a
+known low-value target before launching larger jobs.
 
 ## CLI overview
 
