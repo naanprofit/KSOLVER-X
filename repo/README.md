@@ -93,6 +93,11 @@ Artifacts are written to the repository root:
 * `demo_saves.txt` – candidate scalars that passed the verification stage.
 * `demo_metrics.jsonl` – periodic worker metrics in JSON lines format.
 
+The script now prints a short summary of the latest metrics flush so you can
+see counters such as `steps`, `trap_hits`, and any accumulated timer buckets at
+a glance. The full JSONL file remains available if you want to ingest the
+metrics into other tooling.
+
 ### Manual invocation
 
 The CLI modules can be called individually once dependencies are installed:
@@ -136,6 +141,33 @@ PYTHONPATH=src python3 -m cli.run_worker \
 The worker reports any matches it observes and appends successful scalars to
 `demo_saves.txt`, allowing you to sanity-check end-to-end behaviour against a
 known low-value target before launching larger jobs.
+
+### Scaling to larger ranges
+
+The repository also includes helper scripts for heavier workloads:
+
+* `scripts/gen_traps_10M.sh OUT_DIR` – generate and index a 10 million trap
+  bundle suitable for 48-bit-scale experiments.
+* `scripts/schedule_24k_cores.sh OUT_CSV` – emit a lane schedule covering
+  24,000 workers with 16 lanes each (roughly 384k concurrent lanes).
+
+To aim at a bigger target list, build a Bloom filter from your own JSON file of
+RIPEMD-160 hashes, e.g. `python3 -m cli.trap_tools build-bloom --csv targets.json --out large.bloom --m-bits 28 --k-hashes 6`.
+With the larger trap set and schedule generated above you can launch a worker by swapping the
+artifact paths in the demo command line:
+
+```bash
+python3 -m cli.run_worker \
+    --backend coincurve --seed 42 --r 8 --base 1 \
+    --lanes-csv large_lanes.csv --worker-id 123 \
+    --traps-dir large_traps --bucket-hint-bits 12 \
+    --bloom large.bloom --m-bits 28 --k-hashes 6 --mapped-size $((1<<26)) \
+    --target-rmd YOUR_TARGET_HASH --steps-per-batch 5000 --metrics large_metrics.jsonl
+```
+
+This mirrors the `make run-demo` flow but swaps in the higher-capacity trap and
+schedule artifacts so you can exercise larger search spaces or cluster
+deployments.
 
 ## CLI overview
 
