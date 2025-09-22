@@ -20,7 +20,8 @@ python3 -m cli.trap_tools build-bloom --csv "$TARGETS" --out "$BLOOM" --m-bits 2
 python3 -m cli.crt_tools schedule --L 0 --U 0x100000 --bits-per-mod 8 --mods 3 --workers 1 --lanes-per-worker 4 --out "$LANES"
 python3 -m cli.run_worker --backend coincurve --seed 1337 --r 8 --base 1 --lanes-csv "$LANES" --worker-id 0 \
     --traps-dir "$TRAPS_DIR" --bucket-hint-bits 8 --bloom "$BLOOM" --m-bits 20 --k-hashes 4 --mapped-size $((1<<20)) \
-    --target-rmd 751e76e8199196d454941c45d1b3a323f1433bd6 --save demo_saves.txt --metrics "$METRICS" --steps-per-batch 1000
+    --target-rmd 751e76e8199196d454941c45d1b3a323f1433bd6 --save demo_saves.txt --metrics "$METRICS" --steps-per-batch 1000 \
+    --disable-filter-cascade
 
 echo
 echo "Demo metrics summary (latest flush):"

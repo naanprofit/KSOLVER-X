@@ -43,7 +43,9 @@ class FilterConfig:
     """Parameters controlling the filter cascade."""
 
     bitplane_masks: Sequence[int] = (0xFFF, 0xFFFF)
+    enable_cheap_tag: bool = True
     enable_endomix: bool = True
+    enabled: bool = True
 
 
 @dataclass(slots=True)
