@@ -41,6 +41,11 @@ def main(argv: list[str] | None = None) -> int:
     idx = sub.add_parser("index", help="Build trap shard index")
     idx.add_argument("--traps-dir", type=Path, required=True)
     idx.add_argument("--shard-bits", type=int, default=12)
+    idx.add_argument(
+        "--dedupe",
+        action="store_true",
+        help="Skip duplicate trap anchors when building the shard index",
+    )
 
     bloom_cmd = sub.add_parser("build-bloom", help="Build a Bloom filter from CSV")
     bloom_cmd.add_argument("--csv", type=Path, required=True)
@@ -64,7 +69,7 @@ def main(argv: list[str] | None = None) -> int:
             args.jobs,
         )
     elif args.cmd == "index":
-        build_sharded_index(args.traps_dir, args.shard_bits)
+        build_sharded_index(args.traps_dir, args.shard_bits, dedupe=args.dedupe)
     elif args.cmd == "build-bloom":
         build_bloom_from_csv(args.csv, args.out, args.m_bits, args.k_hashes)
     else:  # pragma: no cover
