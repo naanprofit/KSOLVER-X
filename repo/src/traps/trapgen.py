@@ -102,12 +102,12 @@ def generate_traps(
         write_trap_file(path, entries)
 
 
-def build_index(out_dir: Path, shard_bits: int = 12) -> None:
+def build_index(out_dir: Path, shard_bits: int = 12, *, dedupe: bool = False) -> None:
     """Build a sharded index alongside the generated traps."""
 
     from .trap_index import build_sharded_index
 
-    build_sharded_index(out_dir, shard_bits)
+    build_sharded_index(out_dir, shard_bits, dedupe=dedupe)
 
 
 __all__ = [
