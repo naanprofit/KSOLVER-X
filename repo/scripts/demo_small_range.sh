@@ -4,6 +4,10 @@ set -euo pipefail
 ROOT=$(dirname "$0")/..
 cd "$ROOT"
 
+# Ensure the in-tree "src" package directory is on PYTHONPATH so ``python -m``
+# can resolve the cli.* entrypoints without requiring an editable install.
+export PYTHONPATH="${ROOT}/src${PYTHONPATH:+:${PYTHONPATH}}"
+
 TRAPS_DIR="demo_traps"
 LANES="demo_lanes.csv"
 BLOOM="demo_bloom.dat"
