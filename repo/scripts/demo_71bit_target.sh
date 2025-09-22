@@ -8,19 +8,22 @@ cd "$ROOT"
 # can resolve the cli.* entrypoints without requiring an editable install.
 export PYTHONPATH="${ROOT}/src${PYTHONPATH:+:${PYTHONPATH}}"
 
-TRAPS_DIR="demo_traps"
-LANES="demo_lanes.csv"
-BLOOM="demo_bloom.dat"
-TARGETS="tests/data/sample_targets.json"
-METRICS="demo_metrics.jsonl"
+LOWER_BOUND=$((1<<70))
+UPPER_BOUND=$((1<<71))
 
-python3 -m cli.trap_tools generate --out-dir "$TRAPS_DIR" --total-traps 256 --bucket-log2 8 --base 1 --stride 3
+TRAPS_DIR="demo71_traps"
+LANES="demo71_lanes.csv"
+BLOOM="demo71_bloom.dat"
+TARGETS="tests/data/sample_target_71bit.json"
+METRICS="demo71_metrics.jsonl"
+
+python3 -m cli.trap_tools generate --out-dir "$TRAPS_DIR" --total-traps 256 --bucket-log2 8 --base "$LOWER_BOUND" --stride 3
 python3 -m cli.trap_tools index --traps-dir "$TRAPS_DIR" --shard-bits 8
 python3 -m cli.trap_tools build-bloom --csv "$TARGETS" --out "$BLOOM" --m-bits 20 --k-hashes 4
-python3 -m cli.crt_tools schedule --L 0 --U 0x100000 --bits-per-mod 8 --mods 3 --workers 1 --lanes-per-worker 4 --out "$LANES"
-python3 -m cli.run_worker --backend coincurve --seed 1337 --r 8 --base 1 --lanes-csv "$LANES" --worker-id 0 \
+python3 -m cli.crt_tools schedule --L "$LOWER_BOUND" --U "$UPPER_BOUND" --bits-per-mod 8 --mods 3 --workers 1 --lanes-per-worker 4 --out "$LANES"
+python3 -m cli.run_worker --backend coincurve --seed 1337 --r 8 --base "$LOWER_BOUND" --lanes-csv "$LANES" --worker-id 0 \
     --traps-dir "$TRAPS_DIR" --bucket-hint-bits 8 --bloom "$BLOOM" --m-bits 20 --k-hashes 4 --mapped-size $((1<<20)) \
-    --target-rmd 751e76e8199196d454941c45d1b3a323f1433bd6 --save demo_saves.txt --metrics "$METRICS" --steps-per-batch 1000 \
+    --target-rmd f6f5431d25bbf7b12e8add9af5e3475c44a0a5b8 --save demo71_saves.txt --metrics "$METRICS" --steps-per-batch 1000 \
     --disable-filter-cascade
 
 echo

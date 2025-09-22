@@ -45,17 +45,24 @@ def endomix_tag(pub: bytes, backend: str) -> tuple[int, int]:
 
 
 def apply_filter_cascade(
-    pub: bytes, backend: str = "coincurve", masks: Sequence[int] | None = None
+    pub: bytes,
+    backend: str = "coincurve",
+    masks: Sequence[int] | None = None,
+    use_cheap_tag: bool = True,
+    use_endomix: bool = True,
 ) -> bool:
     """Run the full cascade returning True for likely matches."""
 
-    masks = masks or (0xFFF, 0xFFFF)
-    if not passes_bitplane(pub, masks):
-        return False
-    tag_a, tag_b = cheap_tag128(pub)
-    if (tag_a ^ tag_b) & 0xFFFF:
-        return False
-    if backend:
+    if masks is None:
+        masks = (0xFFF, 0xFFFF)
+    if masks:
+        if not passes_bitplane(pub, masks):
+            return False
+    if use_cheap_tag:
+        tag_a, tag_b = cheap_tag128(pub)
+        if (tag_a ^ tag_b) & 0xFFFF:
+            return False
+    if use_endomix and backend:
         end_a, end_b = endomix_tag(pub, backend)
         if (end_a ^ end_b) & 0xFF:
             return False

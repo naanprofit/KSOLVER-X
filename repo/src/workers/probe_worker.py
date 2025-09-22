@@ -6,7 +6,7 @@ import argparse
 import json
 import logging
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -111,16 +111,29 @@ def _handle_candidate(ctx: WorkerContext, candidate: int) -> None:
             match = True
     if match:
         logger.info("target_found", extra={"scalar": candidate})
+        address = verify.pubkey_to_address(
+            scalar_to_pubkey_compressed(candidate, backend=backend)
+        )
         if ctx.cfg.save_path is not None:
             ctx.cfg.save_path.parent.mkdir(parents=True, exist_ok=True)
             with ctx.cfg.save_path.open("a", encoding="utf8") as fh:
-                fh.write(f"{candidate}\n")
+                fh.write(f"{candidate},{address}\n")
 
 
 def search_lane(d0: int, params: dict[str, object], ctx: WorkerContext) -> None:
     """Search a single lane starting from d0."""
 
     backend = ctx.cfg.backend
+    filter_cfg = ctx.cfg.filter_config
+    filter_enabled = True
+    filter_masks: Sequence[int] | None = None
+    filter_use_cheap_tag = True
+    filter_use_endomix = True
+    if filter_cfg is not None:
+        filter_enabled = filter_cfg.enabled
+        filter_masks = filter_cfg.bitplane_masks
+        filter_use_cheap_tag = filter_cfg.enable_cheap_tag
+        filter_use_endomix = filter_cfg.enable_endomix
     d = d0
     bloom_filter = ctx.bloom
     for _ in range(ctx.cfg.steps_per_batch):
@@ -128,7 +141,13 @@ def search_lane(d0: int, params: dict[str, object], ctx: WorkerContext) -> None:
         ctx.step_counter += 1
         if ctx.metrics:
             ctx.metrics.inc("steps")
-        if not apply_filter_cascade(pub, backend=backend):
+        if filter_enabled and not apply_filter_cascade(
+            pub,
+            backend=backend,
+            masks=filter_masks,
+            use_cheap_tag=filter_use_cheap_tag,
+            use_endomix=filter_use_endomix,
+        ):
             d = bsgsd_steps.next_scalar(d, params)
             continue
         rmd = hash160(pub)
@@ -182,6 +201,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--checkpoint", type=Path)
     parser.add_argument("--gpu", action="store_true")
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--disable-filter-cascade", action="store_true")
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
@@ -210,6 +230,7 @@ def main(argv: list[str] | None = None) -> int:
         bucket_log2=args.bucket_hint_bits,
         bucket_hint_bits=args.bucket_hint_bits,
     )
+    filter_cfg = config.FilterConfig(enabled=not args.disable_filter_cascade)
     worker_cfg = config.WorkerConfig(
         backend=args.backend,
         seed=args.seed,
@@ -224,7 +245,7 @@ def main(argv: list[str] | None = None) -> int:
             if bloom_filter is None
             else config.BloomConfig(args.bloom, args.m_bits, args.k_hashes)
         ),
-        filter_config=config.FilterConfig(),
+        filter_config=filter_cfg,
         metrics=config.MetricsConfig(args.metrics) if metrics_state else None,
         target_rmd160=bytes.fromhex(args.target_rmd) if args.target_rmd else None,
         target_address=args.target_address,
