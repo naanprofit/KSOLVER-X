@@ -69,6 +69,12 @@ The worker applies very cheap bit-plane masks and GLV/negation-derived tags befo
 
 The worker prints progress metrics and writes candidate hits to `SAVES.TXT`. The demo operates on a 40-bit toy range in `scripts/demo_small_range.sh`.
 
+For a higher range example that explores scalars between 2^70 and 2^71−1, run
+`scripts/demo_71bit_target.sh`. It generates fresh artifacts under `demo71_*`
+paths, points the worker at the RIPEMD-160 hash
+`f6f5431d25bbf7b12e8add9af5e3475c44a0a5b8`, and disables the filter cascade so
+candidate matches are not discarded before verification.
+
 ## Usage
 
 ### End-to-end demo
@@ -181,5 +187,6 @@ deployments.
 * Format & lint: `ruff check src tests`
 * Run tests: `pytest`
 * Demo pipeline: `make run-demo`
+* 71-bit demo pipeline: `make run-demo-71bit`
 
 The codebase targets Python 3.11+, relies on `coincurve` (libsecp256k1) by default, and can fall back to an optional ICE shared object if available.
