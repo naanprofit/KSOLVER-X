@@ -111,10 +111,13 @@ def _handle_candidate(ctx: WorkerContext, candidate: int) -> None:
             match = True
     if match:
         logger.info("target_found", extra={"scalar": candidate})
+        address = verify.pubkey_to_address(
+            scalar_to_pubkey_compressed(candidate, backend=backend)
+        )
         if ctx.cfg.save_path is not None:
             ctx.cfg.save_path.parent.mkdir(parents=True, exist_ok=True)
             with ctx.cfg.save_path.open("a", encoding="utf8") as fh:
-                fh.write(f"{candidate}\n")
+                fh.write(f"{candidate},{address}\n")
 
 
 def search_lane(d0: int, params: dict[str, object], ctx: WorkerContext) -> None:
