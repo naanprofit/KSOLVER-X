@@ -1,0 +1,7 @@
+coincurve>=18.0.0
+xxhash
+murmurhash3
+sympy
+numpy
+pytest
+ruff
